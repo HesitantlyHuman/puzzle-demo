@@ -77,6 +77,18 @@ def down(blocks, size):
                     current_ground_check_x += 1
                     continue
 
+                if state[current_ground_check_x, current_ground_check_level] == -2:
+                    block = block_map[current_ground_check_x, current_ground_check_level]
+                    block_is_grounded[block] = True
+                    bottommost_y = current_ground_check_level
+                    for tile in blocks[block][1]:
+                        bottommost_y = max(bottommost_y, tile[1])
+                        tile_is_grounded[tile] = 1
+                    if current_ground_check_level <= bottommost_y - 1:
+                        current_ground_check_level = bottommost_y - 1
+                        current_ground_check_x = 0
+                    continue
+
                 if (
                     current_ground_check_level == state.shape[1] - 1 or
                     tile_is_grounded[current_ground_check_x, current_ground_check_level + 1] == 1
@@ -254,6 +266,7 @@ def go_to_prev_level():
     setup_puzzle(puzzles[current_puzzle_index][0], puzzles[current_puzzle_index][1])
 
 def setup_puzzle(name, state):
+    state = state.T
     global puzzle_name
     global puzzle_size
     global puzzle_height
@@ -309,7 +322,8 @@ colors = {
     -1: "#edf2f4",
     -2: "#6c757d",
     0: "#d90429",
-    1: "#3a5a40"
+    1: "#3a5a40",
+    2: "#ffbf00"
 }
 
 def draw_tile(x, y, type):
@@ -327,10 +341,18 @@ def draw_tile(x, y, type):
     )
 
 def draw_level_text():
-    text = canvas.create_text(0, 50, text=puzzle_name, anchor="nw", font=("Helvetica 30"))
-    coords = canvas.bbox(text)
-    x_offset = (720 / 2) - ((coords[2] - coords[0]) / 2)
-    canvas.move(text, x_offset, 0)
+    lines = puzzle_name.split('\n')
+    line_height = 30
+    available_space = 150
+    line_spacing = 10
+    leftover_space = available_space - (len(lines) * line_height) - ((len(lines) - 1) * line_spacing)
+    top_pad = leftover_space / 2
+    for line in lines:
+        text = canvas.create_text(0, top_pad, text=line, anchor="nw", font=("Helvetica 30"))
+        coords = canvas.bbox(text)
+        x_offset = (720 / 2) - ((coords[2] - coords[0]) / 2)
+        canvas.move(text, x_offset, 0)
+        top_pad += line_height + line_spacing
 
 def draw_blocks(blocks):
     for block_identity, tiles in blocks:
