@@ -373,8 +373,6 @@ def handle_input(event):
     global prev_puzzle_available
     match event.keycode:
         case 111:
-            if puzzle_is_solved[current_puzzle_index]:
-                return
             steps = up(blocks, puzzle_size)
             animation_frames.extend(steps)
             if len(steps) > 0:
@@ -387,6 +385,7 @@ def handle_input(event):
                     handle_animation()
 
                 if has_won(blocks):
+                    puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state)
                     puzzle_is_solved[current_puzzle_index] = True
                     next_puzzle_available = current_puzzle_index < len(puzzles) - 1
                     prev_puzzle_available = current_puzzle_index > 0
@@ -394,8 +393,6 @@ def handle_input(event):
                     next_level_button["state"] = "normal" if next_puzzle_available else "disabled"
 
         case 116:
-            if puzzle_is_solved[current_puzzle_index]:
-                return
             steps = down(blocks, puzzle_size)
             animation_frames.extend(steps)
             if len(steps) > 0:
@@ -408,14 +405,13 @@ def handle_input(event):
                     handle_animation()
 
                 if has_won(blocks):
+                    puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state)
                     puzzle_is_solved[current_puzzle_index] = True
                     next_puzzle_available = current_puzzle_index < len(puzzles) - 1
                     prev_puzzle_available = current_puzzle_index > 0
                     prev_level_button["state"] = "normal" if prev_puzzle_available else "disabled"
                     next_level_button["state"] = "normal" if next_puzzle_available else "disabled"
         case 113:
-            if puzzle_is_solved[current_puzzle_index]:
-                return
             steps = left(blocks, puzzle_size)
             animation_frames.extend(steps)
             if len(steps) > 0:
@@ -428,14 +424,13 @@ def handle_input(event):
                     handle_animation()
 
                 if has_won(blocks):
+                    puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state)
                     puzzle_is_solved[current_puzzle_index] = True
                     next_puzzle_available = current_puzzle_index < len(puzzles) - 1
                     prev_puzzle_available = current_puzzle_index > 0
                     prev_level_button["state"] = "normal" if prev_puzzle_available else "disabled"
                     next_level_button["state"] = "normal" if next_puzzle_available else "disabled"
         case 114:
-            if puzzle_is_solved[current_puzzle_index]:
-                return
             steps = right(blocks, puzzle_size)
             animation_frames.extend(steps)
             if len(steps) > 0:
@@ -448,6 +443,7 @@ def handle_input(event):
                     handle_animation()
 
                 if has_won(blocks):
+                    puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state)
                     puzzle_is_solved[current_puzzle_index] = True
                     next_puzzle_available = current_puzzle_index < len(puzzles) - 1
                     prev_puzzle_available = current_puzzle_index > 0
