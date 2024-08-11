@@ -99,8 +99,8 @@ def down(blocks, size):
                     for tile in blocks[block][1]:
                         bottommost_y = max(bottommost_y, tile[1])
                         tile_is_grounded[tile] = 1
-                    if current_ground_check_level <= bottommost_y - 1:
-                        current_ground_check_level = bottommost_y - 1
+                    if bottommost_y > current_ground_check_level:
+                        current_ground_check_level = bottommost_y
                         current_ground_check_x = 0
 
                 current_ground_check_x += 1
@@ -192,7 +192,7 @@ def left(blocks, size):
 def has_won(blocks):
     block_identities = set()
     for identity, _ in blocks:
-        if identity in block_identities:
+        if identity != -2 and identity in block_identities:
             return False
         block_identities.add(identity)
     return True
@@ -217,10 +217,10 @@ def center(win):
     win.deiconify()
 
 root = tkinter.Tk()
-root.geometry("720x720")
+root.geometry("720x770")
 root.title("unnamed puzzle game")
 root.resizable(False, False)
-canvas = tkinter.Canvas(root, width=720, height=720)
+canvas = tkinter.Canvas(root, width=720, height=770)
 canvas.pack()
 center(root)
 top_padding = 50
@@ -299,6 +299,9 @@ def setup_puzzle(name, state):
     next_level_button.config(height=1, width=1)
     next_level_button.place(x=650, y=390)
     next_level_button["state"] = "normal" if next_puzzle_available else "disabled"
+    retry_button = tkinter.Button(canvas, text="reset", font=("Helvetica 20 bold"), command=lambda: setup_puzzle(name, state.T))
+    retry_button.config(height=1, width=6)
+    retry_button.place(x=310, y=700)
 
 def draw_background():
     canvas.create_rectangle(
@@ -407,7 +410,7 @@ def handle_input(event):
                     handle_animation()
 
                 if has_won(blocks):
-                    puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state)
+                    puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state.T)
                     puzzle_is_solved[current_puzzle_index] = True
                     next_puzzle_available = current_puzzle_index < len(puzzles) - 1
                     prev_puzzle_available = current_puzzle_index > 0
@@ -427,7 +430,7 @@ def handle_input(event):
                     handle_animation()
 
                 if has_won(blocks):
-                    puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state)
+                    puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state.T)
                     puzzle_is_solved[current_puzzle_index] = True
                     next_puzzle_available = current_puzzle_index < len(puzzles) - 1
                     prev_puzzle_available = current_puzzle_index > 0
@@ -446,7 +449,7 @@ def handle_input(event):
                     handle_animation()
 
                 if has_won(blocks):
-                    puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state)
+                    puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state.T)
                     puzzle_is_solved[current_puzzle_index] = True
                     next_puzzle_available = current_puzzle_index < len(puzzles) - 1
                     prev_puzzle_available = current_puzzle_index > 0
@@ -465,7 +468,7 @@ def handle_input(event):
                     handle_animation()
 
                 if has_won(blocks):
-                    puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state)
+                    puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state.T)
                     puzzle_is_solved[current_puzzle_index] = True
                     next_puzzle_available = current_puzzle_index < len(puzzles) - 1
                     prev_puzzle_available = current_puzzle_index > 0
