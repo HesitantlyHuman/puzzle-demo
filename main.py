@@ -452,7 +452,7 @@ def handle_input(event):
     global next_puzzle_available
     global prev_puzzle_available
     print(f"Pressed key code: {event.keycode}")
-    if event.keycode == 111:
+    if event.keycode in [111, 38]:
         steps = up(blocks, puzzle_size)
         animation_frames.extend(steps)
         if len(steps) > 0:
@@ -472,7 +472,7 @@ def handle_input(event):
                     prev_level_button["state"] = "normal" if prev_puzzle_available else "disabled"
                     next_level_button["state"] = "normal" if next_puzzle_available else "disabled"
 
-    elif event.keycode == 116:
+    elif event.keycode in [116, 40]:
         steps = down(blocks, puzzle_size)
         animation_frames.extend(steps)
         if len(steps) > 0:
@@ -491,7 +491,7 @@ def handle_input(event):
                     prev_puzzle_available = current_puzzle_index > 0
                     prev_level_button["state"] = "normal" if prev_puzzle_available else "disabled"
                     next_level_button["state"] = "normal" if next_puzzle_available else "disabled"
-    elif event.keycode == 113:
+    elif event.keycode in [113, 37]:
         steps = left(blocks, puzzle_size)
         animation_frames.extend(steps)
         if len(steps) > 0:
@@ -510,7 +510,7 @@ def handle_input(event):
                     prev_puzzle_available = current_puzzle_index > 0
                     prev_level_button["state"] = "normal" if prev_puzzle_available else "disabled"
                     next_level_button["state"] = "normal" if next_puzzle_available else "disabled"
-    elif event.keycode == 114:
+    elif event.keycode in [114, 39]:
         steps = right(blocks, puzzle_size)
         animation_frames.extend(steps)
         if len(steps) > 0:
@@ -529,7 +529,7 @@ def handle_input(event):
                     prev_puzzle_available = current_puzzle_index > 0
                     prev_level_button["state"] = "normal" if prev_puzzle_available else "disabled"
                     next_level_button["state"] = "normal" if next_puzzle_available else "disabled"
-    elif event.keycode == 24:
+    elif event.keycode in [24, 81]:
         root.destroy()
 
 
