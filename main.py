@@ -63,7 +63,13 @@ def generate_state(blocks, size):
 
 def down(blocks, size):
     blocks = blocks.copy()
+    bombs = [block for block in blocks if block[0] == -3]
+    blocks = [block for block in blocks if block[0] != -3]
     state, block_map = generate_state(blocks, size)
+    bomb_tiles = np.zeros(state.shape, dtype=np.int8) - 1
+    for bomb_index, (_, tiles) in enumerate(bombs):
+        for tile in tiles:
+            bomb_tiles[tile] = bomb_index
     steps = []
     while True:
         # First, check which blocks are grounded
@@ -83,10 +89,7 @@ def down(blocks, size):
                     current_ground_check_x += 1
                     continue
 
-                if state[current_ground_check_x, current_ground_check_level] in [
-                    -2,
-                    -3,
-                ]:
+                if state[current_ground_check_x, current_ground_check_level] == -2:
                     block = block_map[
                         current_ground_check_x, current_ground_check_level
                     ]
@@ -126,6 +129,7 @@ def down(blocks, size):
         if all(block_is_grounded):
             break
 
+        bomb_has_gone_off = False
         # Now move all blocks that are not grounded down
         new_state = np.zeros(state.shape, dtype=np.int8) - 1
         new_block_map = np.zeros(state.shape, dtype=np.int8) - 1
@@ -136,8 +140,12 @@ def down(blocks, size):
             identity, tiles = block
             if not is_grounded:
                 tiles = [(tile_x, tile_y + 1) for tile_x, tile_y in tiles]
-
             for tile in tiles:
+                if bomb_tiles[tile] >= 0:
+                    # Change the bomb in question to a explosion
+                    bomb = bombs[bomb_tiles[tile]]
+                    bombs[bomb_tiles[tile]] = (-4, bomb[1])
+                    bomb_has_gone_off = True
                 new_state[tile] = identity
                 new_block_map[tile] = block_idx
             new_blocks.append((identity, tiles))
@@ -145,8 +153,11 @@ def down(blocks, size):
         state = new_state
         blocks = new_blocks
         block_map = new_block_map
-        steps.append(blocks)
-    return steps
+        blocks_and_bombs = blocks + bombs
+        steps.append(blocks_and_bombs)
+        if bomb_has_gone_off:
+            return steps, True
+    return steps, False
 
 
 def up(blocks, size):
@@ -158,7 +169,7 @@ def up(blocks, size):
         new_tiles = [(x, max_y - y) for x, y in tiles]
         new_blocks.append((i, new_tiles))
 
-    steps = down(new_blocks, size)
+    steps, bombs_gone_off = down(new_blocks, size)
 
     new_steps = []
     for step in steps:
@@ -167,7 +178,7 @@ def up(blocks, size):
             new_tiles = [(x, max_y - y) for x, y in tiles]
             new_step.append((i, new_tiles))
         new_steps.append(new_step)
-    return new_steps
+    return new_steps, bombs_gone_off
 
 
 def right(blocks, size):
@@ -177,7 +188,7 @@ def right(blocks, size):
         new_tiles = [(y, x) for x, y in tiles]
         new_blocks.append((i, new_tiles))
 
-    steps = down(new_blocks, new_size)
+    steps, bombs_gone_off = down(new_blocks, new_size)
 
     new_steps = []
     for step in steps:
@@ -186,7 +197,7 @@ def right(blocks, size):
             new_tiles = [(y, x) for x, y in tiles]
             new_step.append((i, new_tiles))
         new_steps.append(new_step)
-    return new_steps
+    return new_steps, bombs_gone_off
 
 
 def left(blocks, size):
@@ -197,7 +208,7 @@ def left(blocks, size):
         new_blocks.append((i, new_tiles))
     new_size = (size[1], size[0])
 
-    steps = down(new_blocks, new_size)
+    steps, bombs_gone_off = down(new_blocks, new_size)
 
     new_steps = []
     for step in steps:
@@ -207,13 +218,13 @@ def left(blocks, size):
             new_step.append((i, new_tiles))
         new_steps.append(new_step)
 
-    return new_steps
+    return new_steps, bombs_gone_off
 
 
 def has_won(blocks):
     block_identities = set()
     for identity, _ in blocks:
-        if identity != -2 and identity in block_identities:
+        if not identity in [-2, -3] and identity in block_identities:
             return False
         block_identities.add(identity)
     return True
@@ -251,6 +262,7 @@ top_padding = 50
 canvas_padding = 100
 play_area = 720 - 2 * canvas_padding
 
+current_puzzle_is_failed = False
 puzzle_name = None
 puzzle_size = None
 puzzle_height = None
@@ -264,7 +276,8 @@ next_puzzle_available = False
 prev_puzzle_available = False
 next_level_button = None
 prev_level_button = None
-bomb_image = tkinter.PhotoImage(file="bomb.png").subsample(13, 13)
+bomb_image = tkinter.PhotoImage(file="bomb.png").subsample(20, 20)
+explosion_image = tkinter.PhotoImage(file="explosion.png").subsample(6, 6)
 
 from puzzles import puzzles
 
@@ -301,6 +314,7 @@ def go_to_prev_level():
 
 def setup_puzzle(name, state):
     state = state.T
+    global current_puzzle_is_failed
     global puzzle_name
     global puzzle_size
     global puzzle_height
@@ -345,7 +359,7 @@ def setup_puzzle(name, state):
     )
     retry_button.config(height=1, width=6)
     retry_button.place(x=310, y=700)
-    bomb_image = tkinter.PhotoImage(file="bomb.png").subsample(8, 8)
+    current_puzzle_is_failed = False
 
 
 def draw_background():
@@ -356,6 +370,7 @@ def draw_background():
         720 - canvas_padding + top_padding,
         fill="#6c757d",
         width=0,
+        tag="blocks"
     )
     canvas.create_rectangle(
         canvas_padding + tile_size + puzzle_x_offset,
@@ -364,6 +379,7 @@ def draw_background():
         720 - canvas_padding + top_padding - tile_size - puzzle_y_offset,
         fill="#edf2f4",
         width=0,
+        tag="blocks"
     )
 
 
@@ -381,10 +397,19 @@ def draw_tile(x, y, type):
             (y_start + y_end) / 2,
             image=bomb_image,
             anchor="center",
+            tag="blocks"
+        )
+    elif type == -4:
+        canvas.create_image(
+            (x_start + x_end) / 2,
+            (y_start + y_end) / 2,
+            image=explosion_image,
+            anchor="center",
+            tag="blocks"
         )
     else:
         canvas.create_rectangle(
-            x_start, y_start, x_end, y_end, fill=colors[type], width=0
+            x_start, y_start, x_end, y_end, fill=colors[type], width=0, tag="blocks"
         )
 
 
@@ -416,26 +441,38 @@ def draw_blocks(blocks):
 def draw_win():
     canvas.create_text(365, 400, text="Good Job!", font=("Helvetica 42 bold"))
 
+def draw_lose():
+    canvas.create_text(360, 400, text="Good Job...", font=("Helvetica 42 bold"))
+    
+def draw_final_message():
+    canvas.create_text(355, 400, text="Thanks for playing!", font=("Helvetica 42 bold"))
+
 
 setup_puzzle(puzzles[current_puzzle_index][0], puzzles[current_puzzle_index][1])
 
 animating = False
 animation_frames = []
 
-
 def handle_animation():
     global animation_frames
     global animating
+    global puzzle_is_solved
     if len(animation_frames) == 0:
+        if all(puzzle_is_solved):
+            draw_final_message()
+            animating = False
+            return
         if puzzle_is_solved[current_puzzle_index]:
             draw_win()
+        if current_puzzle_is_failed:
+            draw_lose()
         animating = False
         return
+    canvas.delete("blocks")
     to_draw = animation_frames.pop(0)
     draw_background()
     draw_blocks(to_draw)
-    root.after(80, handle_animation)
-
+    root.after(50, handle_animation)
 
 def reset_animation():
     global animation_frames
@@ -451,9 +488,11 @@ def handle_input(event):
     global prev_level_button
     global next_puzzle_available
     global prev_puzzle_available
+    global current_puzzle_is_failed
     print(f"Pressed key code: {event.keycode}")
-    if event.keycode in [111, 38]:
-        steps = up(blocks, puzzle_size)
+    if event.keycode in [111, 38] and not current_puzzle_is_failed:
+        steps, failed = up(blocks, puzzle_size)
+        current_puzzle_is_failed = failed
         animation_frames.extend(steps)
         if len(steps) > 0:
             blocks = steps[-1]
@@ -464,7 +503,7 @@ def handle_input(event):
                 animating = True
                 handle_animation()
 
-                if has_won(blocks):
+                if not current_puzzle_is_failed and has_won(blocks):
                     puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state.T)
                     puzzle_is_solved[current_puzzle_index] = True
                     next_puzzle_available = current_puzzle_index < len(puzzles) - 1
@@ -472,8 +511,9 @@ def handle_input(event):
                     prev_level_button["state"] = "normal" if prev_puzzle_available else "disabled"
                     next_level_button["state"] = "normal" if next_puzzle_available else "disabled"
 
-    elif event.keycode in [116, 40]:
-        steps = down(blocks, puzzle_size)
+    elif event.keycode in [116, 40] and not current_puzzle_is_failed:
+        steps, failed = down(blocks, puzzle_size)
+        current_puzzle_is_failed = failed
         animation_frames.extend(steps)
         if len(steps) > 0:
             blocks = steps[-1]
@@ -484,15 +524,16 @@ def handle_input(event):
                 animating = True
                 handle_animation()
 
-                if has_won(blocks):
+                if not current_puzzle_is_failed and has_won(blocks):
                     puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state.T)
                     puzzle_is_solved[current_puzzle_index] = True
                     next_puzzle_available = current_puzzle_index < len(puzzles) - 1
                     prev_puzzle_available = current_puzzle_index > 0
                     prev_level_button["state"] = "normal" if prev_puzzle_available else "disabled"
                     next_level_button["state"] = "normal" if next_puzzle_available else "disabled"
-    elif event.keycode in [113, 37]:
-        steps = left(blocks, puzzle_size)
+    elif event.keycode in [113, 37] and not current_puzzle_is_failed:
+        steps, failed = left(blocks, puzzle_size)
+        current_puzzle_is_failed = failed
         animation_frames.extend(steps)
         if len(steps) > 0:
             blocks = steps[-1]
@@ -503,15 +544,16 @@ def handle_input(event):
                 animating = True
                 handle_animation()
 
-                if has_won(blocks):
+                if not current_puzzle_is_failed and has_won(blocks):
                     puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state.T)
                     puzzle_is_solved[current_puzzle_index] = True
                     next_puzzle_available = current_puzzle_index < len(puzzles) - 1
                     prev_puzzle_available = current_puzzle_index > 0
                     prev_level_button["state"] = "normal" if prev_puzzle_available else "disabled"
                     next_level_button["state"] = "normal" if next_puzzle_available else "disabled"
-    elif event.keycode in [114, 39]:
-        steps = right(blocks, puzzle_size)
+    elif event.keycode in [114, 39] and not current_puzzle_is_failed:
+        steps, failed = right(blocks, puzzle_size)
+        current_puzzle_is_failed = failed
         animation_frames.extend(steps)
         if len(steps) > 0:
             blocks = steps[-1]
@@ -522,7 +564,7 @@ def handle_input(event):
                 animating = True
                 handle_animation()
 
-                if has_won(blocks):
+                if not current_puzzle_is_failed and has_won(blocks):
                     puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state.T)
                     puzzle_is_solved[current_puzzle_index] = True
                     next_puzzle_available = current_puzzle_index < len(puzzles) - 1
