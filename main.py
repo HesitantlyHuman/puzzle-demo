@@ -2,6 +2,7 @@ from typing import List, Tuple
 
 import numpy as np
 
+
 def parse_blocks(state: np.ndarray) -> List[Tuple[int, List[Tuple[int, int]]]]:
     blocks = []
     claimed = np.zeros(state.shape, dtype=np.int8)
@@ -49,6 +50,7 @@ def parse_blocks(state: np.ndarray) -> List[Tuple[int, List[Tuple[int, int]]]]:
             blocks.append((block_identity, block_tiles))
     return blocks
 
+
 def generate_state(blocks, size):
     state = np.zeros(size, dtype=np.int8) - 1
     block_map = np.zeros(size, dtype=np.int8) - 1
@@ -57,6 +59,7 @@ def generate_state(blocks, size):
             state[tile] = block_identity
             block_map[tile] = block_id
     return state, block_map
+
 
 def down(blocks, size):
     blocks = blocks.copy()
@@ -71,14 +74,22 @@ def down(blocks, size):
             current_ground_check_x = 0
             while current_ground_check_x < state.shape[0]:
                 if (
-                    state[current_ground_check_x, current_ground_check_level] == -1 or
-                    tile_is_grounded[current_ground_check_x, current_ground_check_level] == 1
+                    state[current_ground_check_x, current_ground_check_level] == -1
+                    or tile_is_grounded[
+                        current_ground_check_x, current_ground_check_level
+                    ]
+                    == 1
                 ):
                     current_ground_check_x += 1
                     continue
 
-                if state[current_ground_check_x, current_ground_check_level] == -2:
-                    block = block_map[current_ground_check_x, current_ground_check_level]
+                if state[current_ground_check_x, current_ground_check_level] in [
+                    -2,
+                    -3,
+                ]:
+                    block = block_map[
+                        current_ground_check_x, current_ground_check_level
+                    ]
                     block_is_grounded[block] = True
                     bottommost_y = current_ground_check_level
                     for tile in blocks[block][1]:
@@ -90,10 +101,15 @@ def down(blocks, size):
                     continue
 
                 if (
-                    current_ground_check_level == state.shape[1] - 1 or
-                    tile_is_grounded[current_ground_check_x, current_ground_check_level + 1] == 1
+                    current_ground_check_level == state.shape[1] - 1
+                    or tile_is_grounded[
+                        current_ground_check_x, current_ground_check_level + 1
+                    ]
+                    == 1
                 ):
-                    block = block_map[current_ground_check_x, current_ground_check_level]
+                    block = block_map[
+                        current_ground_check_x, current_ground_check_level
+                    ]
                     block_is_grounded[block] = True
                     bottommost_y = current_ground_check_level
                     for tile in blocks[block][1]:
@@ -114,7 +130,9 @@ def down(blocks, size):
         new_state = np.zeros(state.shape, dtype=np.int8) - 1
         new_block_map = np.zeros(state.shape, dtype=np.int8) - 1
         new_blocks = []
-        for block_idx, (is_grounded, block) in enumerate(zip(block_is_grounded, blocks)):
+        for block_idx, (is_grounded, block) in enumerate(
+            zip(block_is_grounded, blocks)
+        ):
             identity, tiles = block
             if not is_grounded:
                 tiles = [(tile_x, tile_y + 1) for tile_x, tile_y in tiles]
@@ -133,13 +151,13 @@ def down(blocks, size):
 
 def up(blocks, size):
     # size is the same, flip the y
-    max_y = (size[1] - 1)
+    max_y = size[1] - 1
 
     new_blocks = []
     for i, tiles in blocks:
         new_tiles = [(x, max_y - y) for x, y in tiles]
         new_blocks.append((i, new_tiles))
-        
+
     steps = down(new_blocks, size)
 
     new_steps = []
@@ -151,13 +169,14 @@ def up(blocks, size):
         new_steps.append(new_step)
     return new_steps
 
+
 def right(blocks, size):
     new_size = (size[1], size[0])
     new_blocks = []
     for i, tiles in blocks:
         new_tiles = [(y, x) for x, y in tiles]
         new_blocks.append((i, new_tiles))
-        
+
     steps = down(new_blocks, new_size)
 
     new_steps = []
@@ -169,6 +188,7 @@ def right(blocks, size):
         new_steps.append(new_step)
     return new_steps
 
+
 def left(blocks, size):
     magic_val = size[0] - 1
     new_blocks = []
@@ -176,7 +196,7 @@ def left(blocks, size):
         new_tiles = [(y, magic_val - x) for x, y in tiles]
         new_blocks.append((i, new_tiles))
     new_size = (size[1], size[0])
-    
+
     steps = down(new_blocks, new_size)
 
     new_steps = []
@@ -189,6 +209,7 @@ def left(blocks, size):
 
     return new_steps
 
+
 def has_won(blocks):
     block_identities = set()
     for identity, _ in blocks:
@@ -197,7 +218,9 @@ def has_won(blocks):
         block_identities.add(identity)
     return True
 
+
 import tkinter
+
 
 def center(win):
     """
@@ -213,8 +236,9 @@ def center(win):
     win_height = height + titlebar_height + frm_width
     x = win.winfo_screenwidth() // 2 - win_width // 2
     y = win.winfo_screenheight() // 2 - win_height // 2
-    win.geometry('{}x{}+{}+{}'.format(width, height, x, y))
+    win.geometry("{}x{}+{}+{}".format(width, height, x, y))
     win.deiconify()
+
 
 root = tkinter.Tk()
 root.geometry("720x770")
@@ -240,10 +264,12 @@ next_puzzle_available = False
 prev_puzzle_available = False
 next_level_button = None
 prev_level_button = None
+bomb_image = tkinter.PhotoImage(file="bomb.png").subsample(13, 13)
 
 from puzzles import puzzles
 
 puzzle_is_solved = [False for _ in puzzles]
+
 
 def go_to_next_level():
     global current_puzzle_index
@@ -251,9 +277,13 @@ def go_to_next_level():
     global prev_puzzle_available
     current_puzzle_index += 1
     current_puzzle_index = min(len(puzzles) - 1, current_puzzle_index)
-    next_puzzle_available = current_puzzle_index < len(puzzles) - 1 and puzzle_is_solved[current_puzzle_index]
+    next_puzzle_available = (
+        current_puzzle_index < len(puzzles) - 1
+        and puzzle_is_solved[current_puzzle_index]
+    )
     prev_puzzle_available = current_puzzle_index > 0
     setup_puzzle(puzzles[current_puzzle_index][0], puzzles[current_puzzle_index][1])
+
 
 def go_to_prev_level():
     global current_puzzle_index
@@ -261,9 +291,13 @@ def go_to_prev_level():
     global prev_puzzle_available
     current_puzzle_index -= 1
     current_puzzle_index = max(0, current_puzzle_index)
-    next_puzzle_available = current_puzzle_index < len(puzzles) - 1 and puzzle_is_solved[current_puzzle_index]
+    next_puzzle_available = (
+        current_puzzle_index < len(puzzles) - 1
+        and puzzle_is_solved[current_puzzle_index]
+    )
     prev_puzzle_available = current_puzzle_index > 0
     setup_puzzle(puzzles[current_puzzle_index][0], puzzles[current_puzzle_index][1])
+
 
 def setup_puzzle(name, state):
     state = state.T
@@ -291,26 +325,37 @@ def setup_puzzle(name, state):
     draw_level_text()
     draw_background()
     draw_blocks(blocks)
-    prev_level_button = tkinter.Button(canvas, text="<", font=("Helvetica 20 bold"), command=go_to_prev_level)
+    prev_level_button = tkinter.Button(
+        canvas, text="<", font=("Helvetica 20 bold"), command=go_to_prev_level
+    )
     prev_level_button.config(height=1, width=1)
     prev_level_button.place(x=30, y=390)
     prev_level_button["state"] = "normal" if prev_puzzle_available else "disabled"
-    next_level_button = tkinter.Button(canvas, text=">", font=("Helvetica 20 bold"), command=go_to_next_level)
+    next_level_button = tkinter.Button(
+        canvas, text=">", font=("Helvetica 20 bold"), command=go_to_next_level
+    )
     next_level_button.config(height=1, width=1)
     next_level_button.place(x=650, y=390)
     next_level_button["state"] = "normal" if next_puzzle_available else "disabled"
-    retry_button = tkinter.Button(canvas, text="reset", font=("Helvetica 20 bold"), command=lambda: setup_puzzle(name, state.T))
+    retry_button = tkinter.Button(
+        canvas,
+        text="reset",
+        font=("Helvetica 20 bold"),
+        command=lambda: setup_puzzle(name, state.T),
+    )
     retry_button.config(height=1, width=6)
     retry_button.place(x=310, y=700)
+    bomb_image = tkinter.PhotoImage(file="bomb.png").subsample(8, 8)
+
 
 def draw_background():
     canvas.create_rectangle(
         canvas_padding,
         canvas_padding + top_padding,
-        720-canvas_padding,
-        720-canvas_padding + top_padding,
+        720 - canvas_padding,
+        720 - canvas_padding + top_padding,
         fill="#6c757d",
-        width=0
+        width=0,
     )
     canvas.create_rectangle(
         canvas_padding + tile_size + puzzle_x_offset,
@@ -318,57 +363,65 @@ def draw_background():
         720 - canvas_padding - tile_size - puzzle_x_offset,
         720 - canvas_padding + top_padding - tile_size - puzzle_y_offset,
         fill="#edf2f4",
-        width=0
+        width=0,
     )
 
-colors = {
-    -1: "#edf2f4",
-    -2: "#6c757d",
-    0: "#d90429",
-    1: "#3a5a40",
-    2: "#ffbf00"
-}
+
+colors = {-1: "#edf2f4", -2: "#6c757d", 0: "#d90429", 1: "#3a5a40", 2: "#ffbf00"}
+
 
 def draw_tile(x, y, type):
     x_start = (x + 1) * tile_size + canvas_padding + puzzle_x_offset
     y_start = (y + 1) * tile_size + canvas_padding + top_padding + puzzle_y_offset
     x_end = x_start + tile_size
     y_end = y_start + tile_size
-    canvas.create_rectangle(
-        x_start,
-        y_start,
-        x_end,
-        y_end,
-        fill=colors[type],
-        width=0
-    )
+    if type == -3:
+        canvas.create_image(
+            (x_start + x_end) / 2,
+            (y_start + y_end) / 2,
+            image=bomb_image,
+            anchor="center",
+        )
+    else:
+        canvas.create_rectangle(
+            x_start, y_start, x_end, y_end, fill=colors[type], width=0
+        )
+
 
 def draw_level_text():
-    lines = puzzle_name.split('\n')
+    lines = puzzle_name.split("\n")
     line_height = 30
     available_space = 150
     line_spacing = 10
-    leftover_space = available_space - (len(lines) * line_height) - ((len(lines) - 1) * line_spacing)
+    leftover_space = (
+        available_space - (len(lines) * line_height) - ((len(lines) - 1) * line_spacing)
+    )
     top_pad = leftover_space / 2
     for line in lines:
-        text = canvas.create_text(0, top_pad, text=line, anchor="nw", font=("Helvetica 30"))
+        text = canvas.create_text(
+            0, top_pad, text=line, anchor="nw", font=("Helvetica 30")
+        )
         coords = canvas.bbox(text)
         x_offset = (720 / 2) - ((coords[2] - coords[0]) / 2)
         canvas.move(text, x_offset, 0)
         top_pad += line_height + line_spacing
+
 
 def draw_blocks(blocks):
     for block_identity, tiles in blocks:
         for tile in tiles:
             draw_tile(tile[0], tile[1], block_identity)
 
+
 def draw_win():
     canvas.create_text(365, 400, text="Good Job!", font=("Helvetica 42 bold"))
+
 
 setup_puzzle(puzzles[current_puzzle_index][0], puzzles[current_puzzle_index][1])
 
 animating = False
 animation_frames = []
+
 
 def handle_animation():
     global animation_frames
@@ -383,11 +436,13 @@ def handle_animation():
     draw_blocks(to_draw)
     root.after(80, handle_animation)
 
+
 def reset_animation():
     global animation_frames
     global animating
     animating = False
     animation_frames = []
+
 
 def handle_input(event):
     global blocks
@@ -408,13 +463,14 @@ def handle_input(event):
                 animating = True
                 handle_animation()
 
-            if has_won(blocks):
-                puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state.T)
-                puzzle_is_solved[current_puzzle_index] = True
-                next_puzzle_available = current_puzzle_index < len(puzzles) - 1
-                prev_puzzle_available = current_puzzle_index > 0
-                prev_level_button["state"] = "normal" if prev_puzzle_available else "disabled"
-                next_level_button["state"] = "normal" if next_puzzle_available else "disabled"
+                if has_won(blocks):
+                    puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state.T)
+                    puzzle_is_solved[current_puzzle_index] = True
+                    next_puzzle_available = current_puzzle_index < len(puzzles) - 1
+                    prev_puzzle_available = current_puzzle_index > 0
+                    prev_level_button["state"] = "normal" if prev_puzzle_available else "disabled"
+                    next_level_button["state"] = "normal" if next_puzzle_available else "disabled"
+
     elif event.keycode == 116:
         steps = down(blocks, puzzle_size)
         animation_frames.extend(steps)
@@ -427,13 +483,13 @@ def handle_input(event):
                 animating = True
                 handle_animation()
 
-            if has_won(blocks):
-                puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state.T)
-                puzzle_is_solved[current_puzzle_index] = True
-                next_puzzle_available = current_puzzle_index < len(puzzles) - 1
-                prev_puzzle_available = current_puzzle_index > 0
-                prev_level_button["state"] = "normal" if prev_puzzle_available else "disabled"
-                next_level_button["state"] = "normal" if next_puzzle_available else "disabled"
+                if has_won(blocks):
+                    puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state.T)
+                    puzzle_is_solved[current_puzzle_index] = True
+                    next_puzzle_available = current_puzzle_index < len(puzzles) - 1
+                    prev_puzzle_available = current_puzzle_index > 0
+                    prev_level_button["state"] = "normal" if prev_puzzle_available else "disabled"
+                    next_level_button["state"] = "normal" if next_puzzle_available else "disabled"
     elif event.keycode == 113:
         steps = left(blocks, puzzle_size)
         animation_frames.extend(steps)
@@ -446,13 +502,13 @@ def handle_input(event):
                 animating = True
                 handle_animation()
 
-            if has_won(blocks):
-                puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state.T)
-                puzzle_is_solved[current_puzzle_index] = True
-                next_puzzle_available = current_puzzle_index < len(puzzles) - 1
-                prev_puzzle_available = current_puzzle_index > 0
-                prev_level_button["state"] = "normal" if prev_puzzle_available else "disabled"
-                next_level_button["state"] = "normal" if next_puzzle_available else "disabled"
+                if has_won(blocks):
+                    puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state.T)
+                    puzzle_is_solved[current_puzzle_index] = True
+                    next_puzzle_available = current_puzzle_index < len(puzzles) - 1
+                    prev_puzzle_available = current_puzzle_index > 0
+                    prev_level_button["state"] = "normal" if prev_puzzle_available else "disabled"
+                    next_level_button["state"] = "normal" if next_puzzle_available else "disabled"
     elif event.keycode == 114:
         steps = right(blocks, puzzle_size)
         animation_frames.extend(steps)
@@ -465,15 +521,16 @@ def handle_input(event):
                 animating = True
                 handle_animation()
 
-            if has_won(blocks):
-                puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state.T)
-                puzzle_is_solved[current_puzzle_index] = True
-                next_puzzle_available = current_puzzle_index < len(puzzles) - 1
-                prev_puzzle_available = current_puzzle_index > 0
-                prev_level_button["state"] = "normal" if prev_puzzle_available else "disabled"
-                next_level_button["state"] = "normal" if next_puzzle_available else "disabled"
+                if has_won(blocks):
+                    puzzles[current_puzzle_index] = (puzzles[current_puzzle_index][0], state.T)
+                    puzzle_is_solved[current_puzzle_index] = True
+                    next_puzzle_available = current_puzzle_index < len(puzzles) - 1
+                    prev_puzzle_available = current_puzzle_index > 0
+                    prev_level_button["state"] = "normal" if prev_puzzle_available else "disabled"
+                    next_level_button["state"] = "normal" if next_puzzle_available else "disabled"
     elif event.keycode == 24:
         root.destroy()
+
 
 if __name__ == "__main__":
     root.bind("<Key>", handle_input)
