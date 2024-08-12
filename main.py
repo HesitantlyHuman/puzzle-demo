@@ -451,6 +451,7 @@ def handle_input(event):
     global prev_level_button
     global next_puzzle_available
     global prev_puzzle_available
+    print(f"Pressed key code: {event.keycode}")
     if event.keycode == 111:
         steps = up(blocks, puzzle_size)
         animation_frames.extend(steps)
