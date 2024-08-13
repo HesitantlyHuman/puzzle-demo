@@ -353,7 +353,7 @@ def setup_puzzle(name, state):
     next_level_button["state"] = "normal" if next_puzzle_available else "disabled"
     retry_button = tkinter.Button(
         canvas,
-        text="reset",
+        text="Reset",
         font=("Helvetica 20 bold"),
         command=lambda: setup_puzzle(name, state.T),
     )
@@ -442,7 +442,7 @@ def draw_win():
     canvas.create_text(365, 400, text="Good Job!", font=("Helvetica 42 bold"))
 
 def draw_lose():
-    canvas.create_text(360, 400, text="Good Job...", font=("Helvetica 42 bold"))
+    canvas.create_text(365, 400, text="Oops...", font=("Helvetica 42 bold"))
     
 def draw_final_message():
     canvas.create_text(355, 400, text="Thanks for playing!", font=("Helvetica 42 bold"))
